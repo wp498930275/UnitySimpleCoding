@@ -91,35 +91,76 @@ public class LoopScrollView : MonoBehaviour {
         InstantiateCells();
     }
 
+    Vector2 mLastContentPos;
     void Update() {
         //需要更新
         //下方元素上移
-        while (true) {
-            float contentBegin = -mScrollRect.content.anchoredPosition.y;
-            float contentEnd = -mScrollRect.content.anchoredPosition.y - (mScrollRect.transform as RectTransform).sizeDelta.y;
-            if (mDirection == Direction.Horizontal) {
-                contentBegin = -mScrollRect.content.anchoredPosition.x;
-                contentEnd = -mScrollRect.content.anchoredPosition.x + (mScrollRect.transform as RectTransform).sizeDelta.x;
-                if (CellBegin > contentBegin && mShowingIndexBegin > 0) {
-                    CellEndMoveToStart();
-                } else if (CellEnd < contentEnd && mShowingIndexEnd < CellCount - 1) {
-                    CellStartMoveToEnd();
-                } else {
-                    break;
-                }
-            } else if (mDirection == Direction.Vertical) {
-                contentBegin = -mScrollRect.content.anchoredPosition.y;
-                contentEnd = -mScrollRect.content.anchoredPosition.y - (mScrollRect.transform as RectTransform).sizeDelta.y;
-                if (CellBegin < contentBegin && mShowingIndexBegin > 0) {
-                    CellEndMoveToStart();
-                } else if (CellEnd > contentEnd && mShowingIndexEnd < CellCount - 1) {
-                    CellStartMoveToEnd();
-                } else {
-                    break;
-                }
-            } else {
-                break;
+        Vector2 contentPos = mScrollRect.content.anchoredPosition;
+        bool needUpdateAll = false;
+        if (mDirection == Direction.Horizontal) {
+            if (Mathf.Abs(contentPos.x - mLastContentPos.x) >= (mCellSize.x + mSpace) * mCreatedCells.Count) {
+                needUpdateAll = true;
             }
+        } else if (mDirection == Direction.Vertical) {
+            if (Mathf.Abs(contentPos.y - mLastContentPos.y) >= (mCellSize.y + mSpace) * mCreatedCells.Count) {
+                needUpdateAll = true;
+            }
+        }
+        //如果某一帧移动的距离过大，更新全部单元格
+        //移动距离小,逐个更新
+        if (needUpdateAll) {
+            UpdateAllCells();
+        } else {
+            while (true) {
+                float contentBegin, contentEnd;
+                if (mDirection == Direction.Horizontal) {
+                    contentBegin = -contentPos.x;
+                    contentEnd = -contentPos.x + (mScrollRect.transform as RectTransform).sizeDelta.x;
+                    if (CellBegin > contentBegin && mShowingIndexBegin > 0) {
+                        CellEndMoveToStart();
+                    } else if (CellEnd < contentEnd && mShowingIndexEnd < CellCount - 1) {
+                        CellStartMoveToEnd();
+                    } else {
+                        break;
+                    }
+                } else if (mDirection == Direction.Vertical) {
+                    contentBegin = -contentPos.y;
+                    contentEnd = -contentPos.y - (mScrollRect.transform as RectTransform).sizeDelta.y;
+                    if (CellBegin < contentBegin && mShowingIndexBegin > 0) {
+                        CellEndMoveToStart();
+                    } else if (CellEnd > contentEnd && mShowingIndexEnd < CellCount - 1) {
+                        CellStartMoveToEnd();
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+        mLastContentPos = mScrollRect.content.anchoredPosition;
+    }
+
+    //获得Content在当前位置，实际上应该显示Cell在数据中的索引
+    int GetNowCellBeginIndex() {
+        if (mDirection == Direction.Horizontal) {
+            float contentBegin = -mScrollRect.content.anchoredPosition.x;
+            return Mathf.Clamp(Mathf.FloorToInt(contentBegin / (mCellSize.x + mSpace)), 0, CellCount - mCreatedCells.Count);
+        } else if (mDirection == Direction.Vertical) {
+            float contentBegin = mScrollRect.content.anchoredPosition.y;
+            return Mathf.Clamp(Mathf.FloorToInt(contentBegin / (mCellSize.y + mSpace)), 0, CellCount - mCreatedCells.Count);
+        } else {
+            return 0;
+        }
+    }
+
+    //更新所有Cell的位置
+    void UpdateAllCells() {
+        mCellStartIndex = 0;
+        mShowingIndexBegin = GetNowCellBeginIndex();
+        mShowingIndexEnd = mShowingIndexBegin + mCreatedCells.Count - 1;
+        for (int i = 0, index = mShowingIndexBegin; i < mCreatedCells.Count; i++, index++) {
+            UpdateCell(index, i);
         }
     }
 
@@ -177,8 +218,7 @@ public class LoopScrollView : MonoBehaviour {
     }
 
     void SetCellPosition(int dataIndex, int createdIndex) {
-        RectTransform rt = mCreatedCells[createdIndex].transform as RectTransform;
-        SetCellPosition(dataIndex, rt);
+        SetCellPosition(dataIndex, mCreatedCells[createdIndex].transform as RectTransform);
     }
 
     void SetCellPosition(int dataIndex, RectTransform rt) {
