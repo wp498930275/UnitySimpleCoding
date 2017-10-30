@@ -2,11 +2,7 @@
 using UnityEngine;
 
 public enum NotificationType {
-    NT_TestStart,
-    NT_TestClickBtn,
-    NT_TestClickBtnA,
-    NT_TestClickBtnB,
-
+    ChangeMap,
 }
 
 /// <summary>
